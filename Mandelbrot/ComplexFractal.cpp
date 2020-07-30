@@ -138,11 +138,6 @@ bool ComplexFractal::init_base_systems() {
   glViewport(0, 0, _window_width, _window_height);
   glfwSetFramebufferSizeCallback(_window, complex_fractal_framebuffer_size);
 
-  ////_shader = new Shader("mandelbrot.vert", "mandelbrot.frag");
-  ////_shader->use();
-  ////_shader->set_uniform("max_iterations", _max_iterations);
-  ////_shader->set_uniform("div", 12.0f, 15.0f, 5.0f);
-
   // get the vertex information
   glGenVertexArrays(1, &_vao);
   glGenBuffers(1, &_vbo);
