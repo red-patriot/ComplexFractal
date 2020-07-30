@@ -26,6 +26,10 @@ vec4 calculate_color(int escape_time) {
 } 
 
 void main() {
+    if (distance(c, z) <= 0.01) {
+        color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        return;
+    }
     int count = 0;
     vec2 _z = z;
 

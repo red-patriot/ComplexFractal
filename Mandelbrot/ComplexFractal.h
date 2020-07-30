@@ -3,27 +3,30 @@
 
 /*****************************************************************//**
  * \file   ComplexFractal.h
- * \brief  A class to manage plotting Complex Fractals
+ * 
+ *   A pure virtual class to manage plotting Complex Fractals
+ *    Any class can inherit from this one to plot a fractal shape in the 
+ *    complex plane by overriding the following protected methods:
+ *      
+ *      bool init_plot();
+ *      void shutdown_plot();
+ * 
+ *      void process_plot_input();
+ *      void update_plot();
+ *      void render_plot();
+ * 
+ *    Additionally, it is necessary to provide shaders for the plot, these are
+ *    where the calculation takes place.
  * 
  * \author bltan
  * \date   July 2020
  *********************************************************************/
 
+#include <string>
+
 #include <glm\glm.hpp>
 
-namespace {
-  struct _FractalOptions {
-    std::string window_title;
-    std::string shader_name;
-  };
-};
-
-enum FractalParam {
-  Fractal_mandelbrot = 0b0001,
-  Fractal_julia = 0b0010,
-};
-
-/**
+ /**
  * \class ComplexFractal A class to manage the plotting of a fractal shape
  *   in the complex plane.
  */
@@ -35,8 +38,9 @@ public:
    * \param window_width the width in pixels of the window
    * \param window_height the height in pixels of the window
    */
-  ComplexFractal(const int window_width, const int window_height);
-  ~ComplexFractal();
+  ComplexFractal(const int window_width, const int window_height, 
+                 const std::string& window_title, int max_iterations=500);
+  virtual ~ComplexFractal();
 
   /**
    * Initialize necessary systems for plotting and displaying a complex fractal.
@@ -44,27 +48,28 @@ public:
    * \param options optional parameters to change the plotting method of ComplexFractal
    * \return false if there was an error during initialization, true otherwise.
    */
-  bool init(int options);
+  virtual bool init();
   /**
    * Shut down all systems and clean up memory.
    * 
    */
-  void shutdown();
+  virtual void shutdown();
 
   /**
    * Plot the complex fractal
    */
   void plot();
 
-private:
-  /// OpenGL Parameters
+protected:
+  // OpenGL Parameters
   const int _window_width;
   const int _window_height;
+  std::string _window_title;
 
   class GLFWwindow* _window;
   class Shader* _shader;
 
-  /// Plot Parameters
+  // Plot Parameters
   double _vertices[20];
   unsigned int _indices[6];
 
@@ -73,30 +78,38 @@ private:
   unsigned int _ebo;
 
   double _zoom;
-  const int _max_iterations;
+  int _max_iterations;
 
   glm::vec3 _camera_position;
   glm::vec3 _position_correction;
   glm::mat4 _transform;
 
-  /// Helper functions
-  /**
-   * Set the correct settings for the class based on user options
-   */
-  _FractalOptions setup_options(int options);
-
+  // Helper functions
   /**
    * Process user input during plotting. 
    */
-  void process_input();
+  virtual void process_input();
+  void process_base_input();
+  virtual void process_plot_input() = 0;
   /**
    * Update the internal plot according to stored values.
    */
-  void update_plot();
+  virtual void update();
+  void update_base();
+  virtual void update_plot() = 0;
   /**
    * Render the plot surface.
    */
-  void render_plot() const;
+  virtual void render() const;
+  void render_base() const;
+  virtual void render_plot() const = 0;
+  void display() const;
+
+  bool init_base_systems();
+  virtual bool init_plot() = 0;
+
+  void shutdown_base_systems();
+  virtual void shutdown_plot() = 0;
 };
 
 /**

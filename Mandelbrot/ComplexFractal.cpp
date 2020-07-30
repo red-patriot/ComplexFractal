@@ -1,6 +1,5 @@
 #include <iostream>
 #include <algorithm>
-#include <string>
 
 #include <glad\glad.h>
 #include <GLFW\glfw3.h>
@@ -9,11 +8,11 @@
 #include "ComplexFractal.h"
 #include "Shader.h"
 
-
-
-ComplexFractal::ComplexFractal(const int window_width, const int window_height) :
+ComplexFractal::ComplexFractal(const int window_width, const int window_height,
+                               const std::string& window_title, int max_iterations) :
   _window_width(window_width),
   _window_height(window_height),
+  _window_title(window_title),
   _window(nullptr),
   _shader(nullptr),
   _vertices{-1.0, -1.0, 0.0, -2.0, -2.0,
@@ -26,17 +25,94 @@ ComplexFractal::ComplexFractal(const int window_width, const int window_height) 
   _vao(0),
   _ebo(0),
   _zoom(1.0),
-  _max_iterations(500),
+  _max_iterations(max_iterations),
   _camera_position(0.0, 0.0, 0.0),
   _position_correction(0.0, 0.0, 0.0),
   _transform(1.0) { }
 
 ComplexFractal::~ComplexFractal() { }
 
-bool ComplexFractal::init(int options) {
-  // Change the settings according to user Options
-  _FractalOptions opt = setup_options(options);
+bool ComplexFractal::init() {
+  return init_base_systems() && init_plot();
+}
 
+void ComplexFractal::shutdown() { 
+  shutdown_plot();
+  shutdown_base_systems();
+}
+
+void ComplexFractal::plot() { 
+  while (!glfwWindowShouldClose(_window)) {
+    process_input();
+    update();
+    render();
+  }
+}
+
+void ComplexFractal::process_input() { 
+  process_base_input();
+  process_plot_input();
+}
+
+void ComplexFractal::process_base_input() {
+
+  if (glfwGetKey(_window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(_window, true);
+  }
+  if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS) {
+    _camera_position.y -= .001 / _zoom;
+  }
+  if (glfwGetKey(_window, GLFW_KEY_S) == GLFW_PRESS) {
+    _camera_position.y += .001 / _zoom;
+  }
+  if (glfwGetKey(_window, GLFW_KEY_A) == GLFW_PRESS) {
+    _camera_position.x += .001 / _zoom;
+  }
+  if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS) {
+    _camera_position.x -= .001 / _zoom;
+  }
+  if (glfwGetKey(_window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
+    _zoom += .01 * _zoom;
+  }
+  if (glfwGetKey(_window, GLFW_KEY_MINUS) == GLFW_PRESS) {
+    _zoom -= .01 * _zoom;
+  }
+}
+
+void ComplexFractal::update() { 
+  update_base();
+  update_plot();
+}
+
+void ComplexFractal::update_base() {
+  glm::vec3 correction = glm::vec3(_camera_position.x * (1-_zoom), 
+                                   _camera_position.y * (1-_zoom), 
+                                   0.0);
+  _transform = glm::mat4(1.0);
+  _transform = glm::translate(_transform, _camera_position - correction);
+  _transform = glm::scale(_transform, glm::vec3(_zoom, _zoom, 1.0));
+}
+
+void ComplexFractal::render() const { 
+  render_base();
+  render_plot();
+  display();
+}
+
+void ComplexFractal::render_base() const {
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void ComplexFractal::display() const { 
+  glBindVertexArray(_vao);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  glfwSwapBuffers(_window);
+  glfwPollEvents();
+}
+
+bool ComplexFractal::init_base_systems() {
   // initialize OpenGL
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -44,7 +120,7 @@ bool ComplexFractal::init(int options) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // create a window
-  _window = glfwCreateWindow(_window_width, _window_height, opt.window_title.c_str(), NULL, NULL);
+  _window = glfwCreateWindow(_window_width, _window_height, _window_title.c_str(), NULL, NULL);
   if (_window == nullptr) {
     std::cout << "Failed to create GLFW window" << '\n';
     glfwTerminate();
@@ -62,11 +138,10 @@ bool ComplexFractal::init(int options) {
   glViewport(0, 0, _window_width, _window_height);
   glfwSetFramebufferSizeCallback(_window, complex_fractal_framebuffer_size);
 
-  // build and compile the shader
-  _shader = new Shader((opt.shader_name + ".vert").c_str(), (opt.shader_name + ".frag").c_str());
-  _shader->use();
-  _shader->set_uniform("max_iterations", _max_iterations);
-  _shader->set_uniform("div", 12.0f, 15.0f, 5.0f);
+  ////_shader = new Shader("mandelbrot.vert", "mandelbrot.frag");
+  ////_shader->use();
+  ////_shader->set_uniform("max_iterations", _max_iterations);
+  ////_shader->set_uniform("div", 12.0f, 15.0f, 5.0f);
 
   // get the vertex information
   glGenVertexArrays(1, &_vao);
@@ -92,78 +167,11 @@ bool ComplexFractal::init(int options) {
   return true;
 }
 
-void ComplexFractal::shutdown() { 
+void ComplexFractal::shutdown_base_systems() { 
   glDeleteVertexArrays(1, &_vao);
   glDeleteBuffers(1, &_vbo);
 
   glfwTerminate();
-}
-
-void ComplexFractal::plot() { 
-  while (!glfwWindowShouldClose(_window)) {
-    process_input();
-    update_plot();
-    render_plot();
-  }
-}
-
-_FractalOptions ComplexFractal::setup_options(int options) {
-  _FractalOptions ret;
-  if (options & FractalParam::Fractal_mandelbrot) {
-    ret.window_title = "Mandelbrot Plot";
-    ret.shader_name = "mandelbrot";
-  } else if (options & FractalParam::Fractal_julia) {
-    ret.window_title = "Julia Plot";
-    ret.shader_name = "julia";
-  }
-  return ret;
-}
-
-void ComplexFractal::process_input() {
-
-  if (glfwGetKey(_window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    glfwSetWindowShouldClose(_window, true);
-  }
-  if (glfwGetKey(_window, GLFW_KEY_W) == GLFW_PRESS) {
-    _camera_position.y -= .001 / _zoom;
-  }
-  if (glfwGetKey(_window, GLFW_KEY_S) == GLFW_PRESS) {
-    _camera_position.y += .001 / _zoom;
-  }
-  if (glfwGetKey(_window, GLFW_KEY_A) == GLFW_PRESS) {
-    _camera_position.x += .001 / _zoom;
-  }
-  if (glfwGetKey(_window, GLFW_KEY_D) == GLFW_PRESS) {
-    _camera_position.x -= .001 / _zoom;
-  }
-  if (glfwGetKey(_window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-    _zoom += .01 * _zoom;
-  }
-  if (glfwGetKey(_window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-    _zoom -= .01 * _zoom;
-  }
-}
-
-void ComplexFractal::update_plot() { 
-  glm::vec3 correction = glm::vec3(_camera_position.x * (1-_zoom), 
-                                   _camera_position.y * (1-_zoom), 
-                                   0.0);
-  _transform = glm::mat4(1.0);
-  _transform = glm::translate(_transform, _camera_position - correction);
-  _transform = glm::scale(_transform, glm::vec3(_zoom, _zoom, 1.0));
-}
-
-void ComplexFractal::render_plot() const { 
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  _shader->use();
-  _shader->set_uniform("trans", _transform);
-  glBindVertexArray(_vao);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-  glfwSwapBuffers(_window);
-  glfwPollEvents();
 }
 
 void complex_fractal_framebuffer_size(class GLFWwindow* window, int width, int height) {

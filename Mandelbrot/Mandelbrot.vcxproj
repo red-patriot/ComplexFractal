@@ -140,7 +140,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ComplexFractal.cpp" />
+    <ClCompile Include="Julia.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mandelbrot.cpp" />
     <ClCompile Include="Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -155,6 +157,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ComplexFractal.h" />
+    <ClInclude Include="Julia.h" />
+    <ClInclude Include="Mandelbrot.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
